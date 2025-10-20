@@ -2,9 +2,10 @@ import { useState } from 'react'
 import './App.css'
 import { Home } from './components/Home'
 import { TicTacToeGame } from './components/TicTacToeGame'
+import { PerlinNoiseShader } from './components/PerlinNoiseShader'
 import ThreeScene from './ThreeScene'
 
-type View = 'home' | '3d-example' | 'tic-tac-toe'
+type View = 'home' | '3d-example' | 'tic-tac-toe' | 'perlin-noise'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('home')
@@ -42,6 +43,10 @@ function App() {
 
   if (currentView === 'tic-tac-toe') {
     return <TicTacToeGame onBack={() => setCurrentView('home')} />
+  }
+
+  if (currentView === 'perlin-noise') {
+    return <PerlinNoiseShader onBack={() => setCurrentView('home')} />
   }
 
   return null

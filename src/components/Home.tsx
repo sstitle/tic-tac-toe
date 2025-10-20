@@ -1,5 +1,5 @@
 interface HomeProps {
-  onNavigate: (view: '3d-example' | 'tic-tac-toe') => void
+  onNavigate: (view: '3d-example' | 'tic-tac-toe' | 'perlin-noise') => void
 }
 
 export function Home({ onNavigate }: HomeProps) {
@@ -43,6 +43,12 @@ export function Home({ onNavigate }: HomeProps) {
         style={buttonStyle}
       >
         Tic Tac Toe
+      </button>
+      <button
+        onClick={() => onNavigate('perlin-noise')}
+        style={buttonStyle}
+      >
+        Perlin Noise Shader
       </button>
     </div>
   )
