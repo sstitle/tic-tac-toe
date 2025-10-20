@@ -6,6 +6,8 @@ type ShapeType = 'cube' | 'x' | 'o'
 export default function ThreeScene() {
   const containerRef = useRef<HTMLDivElement>(null)
   const [currentShape, setCurrentShape] = useState<ShapeType>('cube')
+  const [showAxes, setShowAxes] = useState(true)
+  const [showGrid, setShowGrid] = useState(true)
 
   useEffect(() => {
     if (!containerRef.current) return
@@ -14,6 +16,8 @@ export default function ThreeScene() {
 
     // Scene setup
     const scene = new THREE.Scene()
+    scene.background = new THREE.Color(0x1a1a1a)
+
     const camera = new THREE.PerspectiveCamera(
       75,
       container.clientWidth / container.clientHeight,
@@ -27,11 +31,87 @@ export default function ThreeScene() {
 
     // Add lighting
     const light = new THREE.DirectionalLight(0xffffff, 1)
-    light.position.set(5, 5, 5)
+    light.position.set(5, 3, 8)
     scene.add(light)
     scene.add(new THREE.AmbientLight(0x404040))
 
-    camera.position.z = 3
+    // Z-up camera position (looking down at XY plane from above and angle)
+    camera.position.set(3, 3, 4)
+    camera.lookAt(0, 0, 0)
+    camera.up.set(0, 0, 1) // Z is up
+
+    // Create XYZ axes (RGB)
+    const createAxes = () => {
+      const axesGroup = new THREE.Group()
+      const axisLength = 2
+      const axisRadius = 0.02
+
+      // X axis - Red
+      const xGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8)
+      const xMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 })
+      const xAxis = new THREE.Mesh(xGeometry, xMaterial)
+      xAxis.rotation.z = -Math.PI / 2
+      xAxis.position.x = axisLength / 2
+      axesGroup.add(xAxis)
+
+      // Y axis - Green
+      const yGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8)
+      const yMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+      const yAxis = new THREE.Mesh(yGeometry, yMaterial)
+      yAxis.rotation.x = Math.PI / 2
+      yAxis.position.y = axisLength / 2
+      axesGroup.add(yAxis)
+
+      // Z axis - Blue
+      const zGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8)
+      const zMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff })
+      const zAxis = new THREE.Mesh(zGeometry, zMaterial)
+      zAxis.position.z = axisLength / 2
+      axesGroup.add(zAxis)
+
+      return axesGroup
+    }
+
+    // Create 3x3 grid in XY plane
+    const createGrid = () => {
+      const gridGroup = new THREE.Group()
+      const gridSize = 3
+      const divisions = 3
+      const step = gridSize / divisions
+      const halfSize = gridSize / 2
+
+      const material = new THREE.LineBasicMaterial({ color: 0x444444 })
+
+      // Grid lines parallel to X axis
+      for (let i = 0; i <= divisions; i++) {
+        const y = -halfSize + i * step
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(-halfSize, y, 0),
+          new THREE.Vector3(halfSize, y, 0),
+        ])
+        const line = new THREE.Line(geometry, material)
+        gridGroup.add(line)
+      }
+
+      // Grid lines parallel to Y axis
+      for (let i = 0; i <= divisions; i++) {
+        const x = -halfSize + i * step
+        const geometry = new THREE.BufferGeometry().setFromPoints([
+          new THREE.Vector3(x, -halfSize, 0),
+          new THREE.Vector3(x, halfSize, 0),
+        ])
+        const line = new THREE.Line(geometry, material)
+        gridGroup.add(line)
+      }
+
+      return gridGroup
+    }
+
+    const axes = createAxes()
+    const grid = createGrid()
+
+    if (showAxes) scene.add(axes)
+    if (showGrid) scene.add(grid)
 
     // Create shapes
     let currentMesh: THREE.Mesh | THREE.Group | null = null
@@ -130,6 +210,32 @@ export default function ThreeScene() {
       if (container && renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement)
       }
+
+      // Dispose axes
+      axes.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose()
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => m.dispose())
+          } else {
+            child.material.dispose()
+          }
+        }
+      })
+
+      // Dispose grid
+      grid.children.forEach((child) => {
+        if (child instanceof THREE.Line) {
+          child.geometry.dispose()
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => m.dispose())
+          } else {
+            child.material.dispose()
+          }
+        }
+      })
+
+      // Dispose current mesh
       if (currentMesh) {
         if (currentMesh instanceof THREE.Mesh) {
           currentMesh.geometry.dispose()
@@ -146,7 +252,7 @@ export default function ThreeScene() {
       oMaterial.dispose()
       renderer.dispose()
     }
-  }, [currentShape])
+  }, [currentShape, showAxes, showGrid])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
@@ -160,6 +266,14 @@ export default function ThreeScene() {
         case '3':
           setCurrentShape('o')
           break
+        case 'a':
+        case 'A':
+          setShowAxes((prev) => !prev)
+          break
+        case 'g':
+        case 'G':
+          setShowGrid((prev) => !prev)
+          break
       }
     }
 
@@ -169,34 +283,39 @@ export default function ThreeScene() {
 
   return (
     <div>
-      <div style={{ marginBottom: '10px' }}>
-        <label htmlFor="shape-select" style={{ marginRight: '10px' }}>
-          Current Shape: <strong>{currentShape.toUpperCase()}</strong>
-        </label>
-        <select
-          id="shape-select"
-          value={currentShape}
-          onChange={(e) => setCurrentShape(e.target.value as ShapeType)}
-          style={{
-            padding: '5px 10px',
-            borderRadius: '4px',
-            border: '1px solid #646cff',
-            backgroundColor: '#1a1a1a',
-            color: 'white',
-            cursor: 'pointer',
-          }}
-        >
-          <option value="cube">Cube (Press 1)</option>
-          <option value="x">X (Press 2)</option>
-          <option value="o">O (Press 3)</option>
-        </select>
+      <div style={{ marginBottom: '10px', color: '#fff' }}>
+        <div style={{ marginBottom: '10px' }}>
+          <label htmlFor="shape-select" style={{ marginRight: '10px' }}>
+            Current Shape: <strong>{currentShape.toUpperCase()}</strong>
+          </label>
+          <select
+            id="shape-select"
+            value={currentShape}
+            onChange={(e) => setCurrentShape(e.target.value as ShapeType)}
+            style={{
+              padding: '5px 10px',
+              borderRadius: '4px',
+              border: '1px solid #444',
+              backgroundColor: '#1a1a1a',
+              color: 'white',
+              cursor: 'pointer',
+            }}
+          >
+            <option value="cube">Cube (Press 1)</option>
+            <option value="x">X (Press 2)</option>
+            <option value="o">O (Press 3)</option>
+          </select>
+        </div>
+        <div style={{ fontSize: '14px', color: '#999' }}>
+          Press <strong>A</strong> to toggle axes ({showAxes ? 'ON' : 'OFF'}) | Press <strong>G</strong> to toggle grid ({showGrid ? 'ON' : 'OFF'})
+        </div>
       </div>
       <div
         ref={containerRef}
         style={{
           width: '600px',
           height: '600px',
-          border: '1px solid #646cff',
+          border: '2px solid #444',
           borderRadius: '8px',
           margin: '0 auto',
         }}
