@@ -48,7 +48,7 @@ export function Home({ onNavigate }: HomeProps) {
         onClick={() => onNavigate('perlin-noise')}
         style={buttonStyle}
       >
-        Perlin Noise Shader
+        Texture Patterns
       </button>
     </div>
   )
