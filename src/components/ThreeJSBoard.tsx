@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { CellState, BOARD_SIZE } from '../domain/types'
 import { useGame } from './GameProvider'
@@ -13,6 +13,9 @@ export function ThreeJSBoard() {
   const raycasterRef = useRef(new THREE.Raycaster())
   const meshesRef = useRef<Map<number, THREE.Group | THREE.Mesh>>(new Map())
   const hoverHighlightRef = useRef<THREE.Mesh | null>(null)
+  const axesRef = useRef<THREE.Group | null>(null)
+  const [showAxes, setShowAxes] = useState(false)
+  const [sceneReady, setSceneReady] = useState(false)
 
   const { gameState, placeMove } = useGame()
 
@@ -90,6 +93,46 @@ export function ThreeJSBoard() {
     const grid = createGrid()
     scene.add(grid)
 
+    // Create XYZ axes (RGB) - simple lines from origin
+    const createAxes = () => {
+      const axesGroup = new THREE.Group()
+      const axisLength = 2
+
+      // X axis - Red (pointing in +X direction)
+      const xGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(axisLength, 0, 0),
+      ])
+      const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 3 })
+      const xAxis = new THREE.Line(xGeometry, xMaterial)
+      axesGroup.add(xAxis)
+
+      // Y axis - Green (pointing in +Y direction)
+      const yGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, axisLength, 0),
+      ])
+      const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 })
+      const yAxis = new THREE.Line(yGeometry, yMaterial)
+      axesGroup.add(yAxis)
+
+      // Z axis - Blue (pointing in +Z direction, which is UP)
+      const zGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, axisLength),
+      ])
+      const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 3 })
+      const zAxis = new THREE.Line(zGeometry, zMaterial)
+      axesGroup.add(zAxis)
+
+      return axesGroup
+    }
+
+    const axes = createAxes()
+    scene.add(axes)
+    axesRef.current = axes
+    axes.visible = showAxes
+
     // Create hover highlight for grid cells in XY plane
     const hoverGeometry = new THREE.PlaneGeometry(1, 1)
     const hoverMaterial = new THREE.MeshBasicMaterial({
@@ -108,9 +151,10 @@ export function ThreeJSBoard() {
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate)
 
-      // Rotate all pieces slightly around Z axis
+      // Rotate all pieces slightly around X and Y axes for better visibility
       meshesRef.current.forEach((mesh) => {
-        mesh.rotation.z += 0.005
+        mesh.rotation.x += 0.005
+        mesh.rotation.y += 0.005
       })
 
       renderer.render(scene, camera)
@@ -143,13 +187,13 @@ export function ThreeJSBoard() {
         intersection.y >= -halfSize &&
         intersection.y <= halfSize
       ) {
-        // Calculate grid cell (0-2 for row and col)
-        const col = Math.floor(intersection.x + halfSize)
-        const row = Math.floor(intersection.y + halfSize)
+        // Calculate grid cell (0-2 for row and col) - rotated 90 degrees
+        const row = Math.floor(intersection.x + halfSize)
+        const col = Math.floor(intersection.y + halfSize)
 
         // Calculate cell center position
-        const cellX = col - halfSize + 0.5
-        const cellY = row - halfSize + 0.5
+        const cellX = row - halfSize + 0.5
+        const cellY = col - halfSize + 0.5
 
         // Update hover highlight position
         hoverHighlight.position.set(cellX, cellY, 0.01)
@@ -166,8 +210,12 @@ export function ThreeJSBoard() {
     renderer.domElement.addEventListener('mousemove', handleMouseMove)
     renderer.domElement.addEventListener('mouseleave', handleMouseLeave)
 
+    // Mark scene as ready
+    setSceneReady(true)
+
     // Cleanup
     return () => {
+      setSceneReady(false)
       cancelAnimationFrame(animationFrameId)
       renderer.domElement.removeEventListener('mousemove', handleMouseMove)
       renderer.domElement.removeEventListener('mouseleave', handleMouseLeave)
@@ -187,54 +235,87 @@ export function ThreeJSBoard() {
         }
       })
 
+      // Dispose axes
+      axes.children.forEach((child) => {
+        if (child instanceof THREE.Line) {
+          child.geometry.dispose()
+          if (Array.isArray(child.material)) {
+            child.material.forEach((m) => m.dispose())
+          } else {
+            child.material.dispose()
+          }
+        }
+      })
+
       hoverGeometry.dispose()
       hoverMaterial.dispose()
       renderer.dispose()
     }
   }, [])
 
-  // Update board based on game state
+  // Separate effect to toggle axes visibility without resetting animations
+  useEffect(() => {
+    if (axesRef.current) {
+      axesRef.current.visible = showAxes
+    }
+  }, [showAxes])
+
+  // Keyboard listener for axes toggle
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === 'a' || e.key === 'A') {
+        setShowAxes((prev) => !prev)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyPress)
+    return () => window.removeEventListener('keydown', handleKeyPress)
+  }, [])
+
+  // Update board based on game state - preserve existing pieces to keep animations
   useEffect(() => {
     const scene = sceneRef.current
-    if (!scene) return
+    if (!scene || !sceneReady) return
 
-    // Clear existing pieces
+    // Remove pieces that are no longer on the board
     meshesRef.current.forEach((mesh, position) => {
-      scene.remove(mesh)
-      if (mesh instanceof THREE.Mesh) {
-        mesh.geometry.dispose()
-        if (Array.isArray(mesh.material)) {
-          mesh.material.forEach((m) => m.dispose())
-        } else {
-          mesh.material.dispose()
-        }
-      } else if (mesh instanceof THREE.Group) {
-        mesh.children.forEach((child) => {
-          if (child instanceof THREE.Mesh) {
-            child.geometry.dispose()
-            if (Array.isArray(child.material)) {
-              child.material.forEach((m) => m.dispose())
-            } else {
-              child.material.dispose()
-            }
+      if (gameState.board[position] === CellState.Empty) {
+        scene.remove(mesh)
+        if (mesh instanceof THREE.Mesh) {
+          mesh.geometry.dispose()
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach((m) => m.dispose())
+          } else {
+            mesh.material.dispose()
           }
-        })
+        } else if (mesh instanceof THREE.Group) {
+          mesh.children.forEach((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.geometry.dispose()
+              if (Array.isArray(child.material)) {
+                child.material.forEach((m) => m.dispose())
+              } else {
+                child.material.dispose()
+              }
+            }
+          })
+        }
+        meshesRef.current.delete(position)
       }
     })
-    meshesRef.current.clear()
 
-    // Create pieces for current board state in XY plane
+    // Add new pieces that weren't there before
     gameState.board.forEach((cellState, index) => {
-      if (cellState === CellState.Empty) return
+      if (cellState === CellState.Empty || meshesRef.current.has(index)) return
 
       const row = Math.floor(index / BOARD_SIZE)
       const col = index % BOARD_SIZE
 
-      // Position in XY plane (grid is -1.5 to 1.5)
+      // Position in XY plane (grid is -1.5 to 1.5) - rotated 90 degrees
       const halfSize = 1.5
-      const x = col - halfSize + 0.5
-      const y = row - halfSize + 0.5
-      const z = 0.4 // Raised slightly above the grid
+      const x = row - halfSize + 0.5
+      const y = col - halfSize + 0.5
+      const z = 0.15 // Lower, closer to the grid
 
       let mesh: THREE.Mesh | THREE.Group
 
@@ -264,7 +345,7 @@ export function ThreeJSBoard() {
       scene.add(mesh)
       meshesRef.current.set(index, mesh)
     })
-  }, [gameState.board])
+  }, [gameState.board, sceneReady])
 
   // Handle click
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -295,9 +376,9 @@ export function ThreeJSBoard() {
       intersection.y >= -halfSize &&
       intersection.y <= halfSize
     ) {
-      // Calculate grid cell (0-2)
-      const col = Math.floor(intersection.x + halfSize)
-      const row = Math.floor(intersection.y + halfSize)
+      // Calculate grid cell (0-2) - rotated 90 degrees
+      const row = Math.floor(intersection.x + halfSize)
+      const col = Math.floor(intersection.y + halfSize)
 
       // Convert to board position
       const position = row * BOARD_SIZE + col
