@@ -5,6 +5,9 @@ type ShapeType = 'cube' | 'x' | 'o'
 
 export default function ThreeScene() {
   const containerRef = useRef<HTMLDivElement>(null)
+  const axesRef = useRef<THREE.Group | null>(null)
+  const gridRef = useRef<THREE.Group | null>(null)
+  const sceneRef = useRef<THREE.Scene | null>(null)
   const [currentShape, setCurrentShape] = useState<ShapeType>('cube')
   const [showAxes, setShowAxes] = useState(true)
   const [showGrid, setShowGrid] = useState(true)
@@ -17,6 +20,7 @@ export default function ThreeScene() {
     // Scene setup
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x1a1a1a)
+    sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(
       75,
@@ -113,8 +117,15 @@ export default function ThreeScene() {
     const axes = createAxes()
     const grid = createGrid()
 
-    if (showAxes) scene.add(axes)
-    if (showGrid) scene.add(grid)
+    axesRef.current = axes
+    gridRef.current = grid
+
+    scene.add(axes)
+    scene.add(grid)
+
+    // Set initial visibility
+    axes.visible = showAxes
+    grid.visible = showGrid
 
     // Create shapes
     let currentMesh: THREE.Mesh | THREE.Group | null = null
@@ -255,7 +266,17 @@ export default function ThreeScene() {
       oMaterial.dispose()
       renderer.dispose()
     }
-  }, [currentShape, showAxes, showGrid])
+  }, [currentShape])
+
+  // Separate effect to toggle axes/grid visibility without resetting animations
+  useEffect(() => {
+    if (axesRef.current) {
+      axesRef.current.visible = showAxes
+    }
+    if (gridRef.current) {
+      gridRef.current.visible = showGrid
+    }
+  }, [showAxes, showGrid])
 
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
