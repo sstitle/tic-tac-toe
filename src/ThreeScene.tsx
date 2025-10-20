@@ -8,6 +8,8 @@ export default function ThreeScene() {
   const axesRef = useRef<THREE.Group | null>(null)
   const gridRef = useRef<THREE.Group | null>(null)
   const sceneRef = useRef<THREE.Scene | null>(null)
+  const hoverHighlightRef = useRef<THREE.Mesh | null>(null)
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null)
   const [currentShape, setCurrentShape] = useState<ShapeType>('cube')
   const [showAxes, setShowAxes] = useState(true)
   const [showGrid, setShowGrid] = useState(true)
@@ -28,6 +30,7 @@ export default function ThreeScene() {
       0.1,
       1000
     )
+    cameraRef.current = camera
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setSize(container.clientWidth, container.clientHeight)
@@ -127,6 +130,19 @@ export default function ThreeScene() {
     axes.visible = showAxes
     grid.visible = showGrid
 
+    // Create hover highlight for grid cells
+    const hoverGeometry = new THREE.PlaneGeometry(1, 1)
+    const hoverMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.DoubleSide,
+    })
+    const hoverHighlight = new THREE.Mesh(hoverGeometry, hoverMaterial)
+    hoverHighlight.visible = false
+    scene.add(hoverHighlight)
+    hoverHighlightRef.current = hoverHighlight
+
     // Create shapes
     let currentMesh: THREE.Mesh | THREE.Group | null = null
 
@@ -217,13 +233,71 @@ export default function ThreeScene() {
     }
     window.addEventListener('resize', handleResize)
 
+    // Handle mouse move for grid cell hover
+    const raycaster = new THREE.Raycaster()
+    const mouse = new THREE.Vector2()
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+      raycaster.setFromCamera(mouse, camera)
+
+      // Intersect with XY plane at z=0
+      const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
+      const intersection = new THREE.Vector3()
+      raycaster.ray.intersectPlane(plane, intersection)
+
+      // Check if intersection is within grid bounds (-1.5 to 1.5 in both x and y)
+      const gridSize = 3
+      const halfSize = gridSize / 2
+
+      if (
+        intersection.x >= -halfSize &&
+        intersection.x <= halfSize &&
+        intersection.y >= -halfSize &&
+        intersection.y <= halfSize
+      ) {
+        // Calculate grid cell (0-2 for row and col)
+        const col = Math.floor(intersection.x + halfSize)
+        const row = Math.floor(intersection.y + halfSize)
+
+        // Calculate cell center position
+        const cellX = col - halfSize + 0.5
+        const cellY = row - halfSize + 0.5
+
+        // Update hover highlight position
+        hoverHighlight.position.set(cellX, cellY, 0.01)
+        hoverHighlight.visible = true
+      } else {
+        hoverHighlight.visible = false
+      }
+    }
+
+    renderer.domElement.addEventListener('mousemove', handleMouseMove)
+
+    const handleMouseLeave = () => {
+      hoverHighlight.visible = false
+    }
+
+    renderer.domElement.addEventListener('mouseleave', handleMouseLeave)
+
     // Cleanup
     return () => {
       cancelAnimationFrame(animationFrameId)
       window.removeEventListener('resize', handleResize)
+      renderer.domElement.removeEventListener('mousemove', handleMouseMove)
+      renderer.domElement.removeEventListener('mouseleave', handleMouseLeave)
       if (container && renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement)
       }
+
+      // Dispose hover highlight
+      hoverGeometry.dispose()
+      hoverMaterial.dispose()
 
       // Dispose axes
       axes.children.forEach((child) => {
