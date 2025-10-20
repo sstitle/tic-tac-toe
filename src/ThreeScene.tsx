@@ -35,22 +35,26 @@ export default function ThreeScene() {
 
     // Create shapes
     let currentMesh: THREE.Mesh | THREE.Group | null = null
-    const material = new THREE.MeshPhongMaterial({ color: 0x00ff00 })
+
+    // Create separate materials for each shape
+    const cubeMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 }) // Green
+    const xMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 }) // Red
+    const oMaterial = new THREE.MeshPhongMaterial({ color: 0x0000ff }) // Blue
 
     const createCube = () => {
       const geometry = new THREE.BoxGeometry(1, 1, 1)
-      return new THREE.Mesh(geometry, material)
+      return new THREE.Mesh(geometry, cubeMaterial)
     }
 
     const createX = () => {
       const group = new THREE.Group()
       const barGeometry = new THREE.BoxGeometry(0.2, 1.5, 0.2)
 
-      const bar1 = new THREE.Mesh(barGeometry, material)
+      const bar1 = new THREE.Mesh(barGeometry, xMaterial)
       bar1.rotation.z = Math.PI / 4
       group.add(bar1)
 
-      const bar2 = new THREE.Mesh(barGeometry, material)
+      const bar2 = new THREE.Mesh(barGeometry, xMaterial)
       bar2.rotation.z = -Math.PI / 4
       group.add(bar2)
 
@@ -59,7 +63,7 @@ export default function ThreeScene() {
 
     const createO = () => {
       const geometry = new THREE.TorusGeometry(0.6, 0.15, 16, 100)
-      return new THREE.Mesh(geometry, material)
+      return new THREE.Mesh(geometry, oMaterial)
     }
 
     const updateShape = () => {
@@ -137,7 +141,9 @@ export default function ThreeScene() {
           })
         }
       }
-      material.dispose()
+      cubeMaterial.dispose()
+      xMaterial.dispose()
+      oMaterial.dispose()
       renderer.dispose()
     }
   }, [currentShape])
@@ -188,10 +194,11 @@ export default function ThreeScene() {
       <div
         ref={containerRef}
         style={{
-          width: '100%',
-          height: '400px',
+          width: '600px',
+          height: '600px',
           border: '1px solid #646cff',
           borderRadius: '8px',
+          margin: '0 auto',
         }}
       />
     </div>
