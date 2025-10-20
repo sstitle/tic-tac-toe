@@ -1,9 +1,14 @@
-import { createContext, useContext, ReactNode } from 'react'
+import { createContext, useContext } from 'react'
+import type { ReactNode } from 'react'
 import { useGameState } from '../hooks/useGameState'
 import type { UseGameStateReturn } from '../hooks/useGameState'
 
 const GameContext = createContext<UseGameStateReturn | null>(null)
 
+/**
+ * GameProvider - Context provider for game state
+ * Follows Dependency Inversion Principle - components depend on context, not direct state
+ */
 export function GameProvider({ children }: { children: ReactNode }) {
   const gameState = useGameState()
 
