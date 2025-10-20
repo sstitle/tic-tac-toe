@@ -37,6 +37,10 @@
               git
               nickel
               mask
+
+              # Web tools
+              nodejs
+              pnpm
             ];
 
             shellHook = ''
