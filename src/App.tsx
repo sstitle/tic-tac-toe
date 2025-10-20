@@ -16,13 +16,13 @@ function App() {
     padding: '10px 20px',
     margin: '0 5px',
     fontSize: '16px',
-    borderRadius: '4px 4px 0 0',
-    border: '1px solid #646cff',
-    borderBottom: active ? 'none' : '1px solid #646cff',
-    backgroundColor: active ? '#1a1a1a' : '#0a0a0a',
+    borderRadius: '8px 8px 0 0',
+    border: '1px solid #444',
+    borderBottom: active ? 'none' : '1px solid #444',
+    backgroundColor: active ? '#2a2a2a' : '#1a1a1a',
     color: '#fff',
     cursor: 'pointer',
-    fontWeight: active ? 'bold' : 'normal',
+    fontWeight: active ? ('bold' as const) : ('normal' as const),
   })
 
   return (
@@ -55,10 +55,10 @@ function App() {
         </div>
 
         <div style={{
-          border: '1px solid #646cff',
+          border: '1px solid #444',
           borderRadius: '0 8px 8px 8px',
-          padding: '20px',
-          backgroundColor: '#0a0a0a',
+          padding: '30px',
+          backgroundColor: '#1a1a1a',
         }}>
           {viewMode === 'buttons' && <ButtonBoard />}
           {viewMode === 'canvas2d' && <Canvas2DBoard />}

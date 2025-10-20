@@ -7,12 +7,13 @@ export function GameControls() {
     padding: '10px 20px',
     margin: '0 5px',
     fontSize: '16px',
-    borderRadius: '4px',
-    border: '1px solid #646cff',
-    backgroundColor: disabled ? '#333' : '#1a1a1a',
+    borderRadius: '6px',
+    border: '1px solid #444',
+    backgroundColor: disabled ? '#1a1a1a' : '#2a2a2a',
     color: disabled ? '#666' : '#fff',
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.5 : 1,
+    transition: 'all 0.2s',
   })
 
   return (

@@ -23,9 +23,10 @@ export function GameStatus() {
     <div
       style={{
         fontSize: '24px',
-        fontWeight: 'bold',
+        fontWeight: 'bold' as const,
         marginBottom: '20px',
-        color: isGameOver ? '#646cff' : '#fff',
+        color: isGameOver ? '#ffd700' : '#fff',
+        textShadow: isGameOver ? '0 0 10px rgba(255, 215, 0, 0.5)' : 'none',
       }}
     >
       {getStatusMessage()}
