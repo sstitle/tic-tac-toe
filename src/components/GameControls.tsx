@@ -4,9 +4,9 @@ export function GameControls() {
   const { undo, redo, reset, canUndo, canRedo } = useGame()
 
   const buttonStyle = (disabled: boolean) => ({
-    padding: '10px 20px',
-    margin: '0 5px',
-    fontSize: '16px',
+    padding: '8px 16px',
+    margin: '0 4px',
+    fontSize: '14px',
     borderRadius: '6px',
     border: '1px solid #444',
     backgroundColor: disabled ? '#1a1a1a' : '#2a2a2a',
@@ -17,7 +17,7 @@ export function GameControls() {
   })
 
   return (
-    <div style={{ marginBottom: '15px' }}>
+    <div style={{ display: 'flex', gap: '4px', whiteSpace: 'nowrap' }}>
       <button onClick={undo} disabled={!canUndo} style={buttonStyle(!canUndo)}>
         Undo
       </button>

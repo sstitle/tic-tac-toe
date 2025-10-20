@@ -3,8 +3,7 @@ import * as THREE from 'three'
 import { CellState, BOARD_SIZE } from '../domain/types'
 import { useGame } from './GameProvider'
 
-const CANVAS_WIDTH = 600
-const CANVAS_HEIGHT = 600
+const DEFAULT_SIZE = 400
 
 export function ThreeJSBoard() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -13,6 +12,7 @@ export function ThreeJSBoard() {
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null)
   const raycasterRef = useRef(new THREE.Raycaster())
   const meshesRef = useRef<Map<number, THREE.Group | THREE.Mesh>>(new Map())
+  const hoverHighlightRef = useRef<THREE.Mesh | null>(null)
 
   const { gameState, placeMove } = useGame()
 
@@ -29,7 +29,7 @@ export function ThreeJSBoard() {
 
     const camera = new THREE.PerspectiveCamera(
       50,
-      CANVAS_WIDTH / CANVAS_HEIGHT,
+      container.clientWidth / container.clientHeight,
       0.1,
       1000
     )
@@ -37,7 +37,7 @@ export function ThreeJSBoard() {
     cameraRef.current = camera
 
     const renderer = new THREE.WebGLRenderer({ antialias: true })
-    renderer.setSize(CANVAS_WIDTH, CANVAS_HEIGHT)
+    renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
     rendererRef.current = renderer
 
@@ -54,6 +54,20 @@ export function ThreeJSBoard() {
     gridHelper.rotation.x = Math.PI / 2
     scene.add(gridHelper)
 
+    // Create hover highlight for grid cells
+    const hoverGeometry = new THREE.PlaneGeometry(1.1, 1.1)
+    const hoverMaterial = new THREE.MeshBasicMaterial({
+      color: 0xffff00,
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.DoubleSide,
+    })
+    const hoverHighlight = new THREE.Mesh(hoverGeometry, hoverMaterial)
+    hoverHighlight.rotation.x = Math.PI / 2
+    hoverHighlight.visible = false
+    scene.add(hoverHighlight)
+    hoverHighlightRef.current = hoverHighlight
+
     // Animation loop
     let animationFrameId: number
     const animate = () => {
@@ -68,12 +82,53 @@ export function ThreeJSBoard() {
     }
     animate()
 
+    // Handle mouse move for hover highlighting
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!container) return
+
+      const rect = container.getBoundingClientRect()
+      const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1
+
+      // Create a plane at y=0 for intersection
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+      raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera)
+
+      const intersection = new THREE.Vector3()
+      raycaster.ray.intersectPlane(plane, intersection)
+
+      // Convert world coordinates to grid position
+      const col = Math.round(intersection.x / 1.1) + 1
+      const row = Math.round(intersection.z / 1.1) + 1
+
+      // Validate bounds and update hover highlight
+      if (col >= 0 && col < BOARD_SIZE && row >= 0 && row < BOARD_SIZE) {
+        const cellX = (col - 1) * 1.1
+        const cellZ = (row - 1) * 1.1
+        hoverHighlight.position.set(cellX, 0.01, cellZ)
+        hoverHighlight.visible = true
+      } else {
+        hoverHighlight.visible = false
+      }
+    }
+
+    const handleMouseLeave = () => {
+      hoverHighlight.visible = false
+    }
+
+    renderer.domElement.addEventListener('mousemove', handleMouseMove)
+    renderer.domElement.addEventListener('mouseleave', handleMouseLeave)
+
     // Cleanup
     return () => {
       cancelAnimationFrame(animationFrameId)
+      renderer.domElement.removeEventListener('mousemove', handleMouseMove)
+      renderer.domElement.removeEventListener('mouseleave', handleMouseLeave)
       if (container && renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement)
       }
+      hoverGeometry.dispose()
+      hoverMaterial.dispose()
       renderer.dispose()
     }
   }, [])
@@ -157,8 +212,8 @@ export function ThreeJSBoard() {
     if (!container || !camera || !renderer) return
 
     const rect = container.getBoundingClientRect()
-    const x = ((event.clientX - rect.left) / CANVAS_WIDTH) * 2 - 1
-    const y = -((event.clientY - rect.top) / CANVAS_HEIGHT) * 2 + 1
+    const x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    const y = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
     // Create a plane at y=0 for intersection
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
@@ -180,13 +235,15 @@ export function ThreeJSBoard() {
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
       <div
         ref={containerRef}
         onClick={handleClick}
         style={{
-          width: `${CANVAS_WIDTH}px`,
-          height: `${CANVAS_HEIGHT}px`,
+          width: '100%',
+          maxWidth: 'min(90vw, 600px)',
+          minWidth: '300px',
+          aspectRatio: '1',
           border: '2px solid #646cff',
           borderRadius: '8px',
           cursor: 'pointer',

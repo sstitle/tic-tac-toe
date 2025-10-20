@@ -29,30 +29,35 @@ export function TicTacToeGame({ onBack }: TicTacToeGameProps) {
   })
 
   const backButtonStyle = {
-    padding: '10px 20px',
-    fontSize: '16px',
+    padding: '8px 16px',
+    fontSize: '14px',
     borderRadius: '6px',
     border: '1px solid #444',
     backgroundColor: '#2a2a2a',
     color: '#fff',
     cursor: 'pointer',
     transition: 'all 0.2s',
-    marginBottom: '20px',
+    position: 'absolute' as const,
+    top: '10px',
+    left: '10px',
   }
 
   return (
     <GameProvider>
-      <div style={{ padding: '20px', margin: '0 auto', maxWidth: '800px', textAlign: 'center' }}>
+      <div style={{ padding: '10px', margin: '0 auto', maxWidth: '900px', position: 'relative' }}>
         <button onClick={onBack} style={backButtonStyle}>
           ← Back
         </button>
 
-        <h1 style={{ marginBottom: '20px', marginTop: '10px', fontSize: '32px', color: '#fff' }}>Tic-Tac-Toe</h1>
+        <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+          <h1 style={{ margin: '0 0 10px 0', fontSize: '24px', color: '#fff' }}>Tic-Tac-Toe</h1>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '20px', marginBottom: '10px' }}>
+            <GameStatus />
+            <GameControls />
+          </div>
+        </div>
 
-        <GameStatus />
-        <GameControls />
-
-        <div style={{ marginBottom: '15px' }}>
+        <div style={{ marginBottom: '10px', textAlign: 'center' }}>
           <button
             onClick={() => setViewMode('buttons')}
             style={tabStyle(viewMode === 'buttons')}
@@ -76,8 +81,11 @@ export function TicTacToeGame({ onBack }: TicTacToeGameProps) {
         <div style={{
           border: '1px solid #444',
           borderRadius: '0 8px 8px 8px',
-          padding: '20px',
+          padding: '15px',
           backgroundColor: '#1a1a1a',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
         }}>
           {viewMode === 'buttons' && <ButtonBoard />}
           {viewMode === 'canvas2d' && <Canvas2DBoard />}

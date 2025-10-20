@@ -10,15 +10,17 @@ function App() {
   const [currentView, setCurrentView] = useState<View>('home')
 
   const backButtonStyle = {
-    padding: '10px 20px',
-    fontSize: '16px',
+    padding: '8px 16px',
+    fontSize: '14px',
     borderRadius: '6px',
     border: '1px solid #444',
     backgroundColor: '#2a2a2a',
     color: '#fff',
     cursor: 'pointer',
     transition: 'all 0.2s',
-    marginBottom: '20px',
+    position: 'absolute' as const,
+    top: '10px',
+    left: '10px',
   }
 
   if (currentView === 'home') {
@@ -27,11 +29,13 @@ function App() {
 
   if (currentView === '3d-example') {
     return (
-      <div style={{ padding: '20px', margin: '0 auto', maxWidth: '800px' }}>
+      <div style={{ padding: '10px', margin: '0 auto', maxWidth: '900px', position: 'relative' }}>
         <button onClick={() => setCurrentView('home')} style={backButtonStyle}>
           ← Back
         </button>
-        <ThreeScene />
+        <div style={{ paddingTop: '10px' }}>
+          <ThreeScene />
+        </div>
       </div>
     )
   }

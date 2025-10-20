@@ -380,39 +380,42 @@ export default function ThreeScene() {
   }, [])
 
   return (
-    <div>
-      <div style={{ marginBottom: '10px', color: '#fff' }}>
-        <div style={{ marginBottom: '10px' }}>
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ marginBottom: '10px', color: '#fff', fontSize: '14px' }}>
+        <div style={{ marginBottom: '8px' }}>
           <label htmlFor="shape-select" style={{ marginRight: '10px' }}>
-            Current Shape: <strong>{currentShape.toUpperCase()}</strong>
+            Shape: <strong>{currentShape.toUpperCase()}</strong>
           </label>
           <select
             id="shape-select"
             value={currentShape}
             onChange={(e) => setCurrentShape(e.target.value as ShapeType)}
             style={{
-              padding: '5px 10px',
+              padding: '4px 8px',
               borderRadius: '4px',
               border: '1px solid #444',
               backgroundColor: '#1a1a1a',
               color: 'white',
               cursor: 'pointer',
+              fontSize: '14px',
             }}
           >
-            <option value="cube">Cube (Press 1)</option>
-            <option value="x">X (Press 2)</option>
-            <option value="o">O (Press 3)</option>
+            <option value="cube">Cube (1)</option>
+            <option value="x">X (2)</option>
+            <option value="o">O (3)</option>
           </select>
         </div>
-        <div style={{ fontSize: '14px', color: '#999' }}>
-          Press <strong>A</strong> to toggle axes ({showAxes ? 'ON' : 'OFF'}) | Press <strong>G</strong> to toggle grid ({showGrid ? 'ON' : 'OFF'})
+        <div style={{ fontSize: '12px', color: '#999' }}>
+          <strong>A</strong>: Axes ({showAxes ? 'ON' : 'OFF'}) | <strong>G</strong>: Grid ({showGrid ? 'ON' : 'OFF'})
         </div>
       </div>
       <div
         ref={containerRef}
         style={{
-          width: '600px',
-          height: '600px',
+          width: '100%',
+          maxWidth: 'min(90vw, 600px)',
+          minWidth: '300px',
+          aspectRatio: '1',
           border: '2px solid #444',
           borderRadius: '8px',
           margin: '0 auto',

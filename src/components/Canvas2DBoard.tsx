@@ -1,15 +1,16 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CellState, BOARD_SIZE } from '../domain/types'
 import { useGame } from './GameProvider'
 
-const CANVAS_SIZE = 600
+const CANVAS_SIZE = 400
 const CELL_SIZE = CANVAS_SIZE / BOARD_SIZE
-const LINE_WIDTH = 4
-const SYMBOL_PADDING = 30
+const LINE_WIDTH = 3
+const SYMBOL_PADDING = 20
 
 export function Canvas2DBoard() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { gameState, placeMove } = useGame()
+  const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null)
 
   // Draw the board
   useEffect(() => {
@@ -38,6 +39,14 @@ export function Canvas2DBoard() {
       ctx.moveTo(0, i * CELL_SIZE)
       ctx.lineTo(CANVAS_SIZE, i * CELL_SIZE)
       ctx.stroke()
+    }
+
+    // Draw hover highlight
+    if (hoverCell) {
+      const x = hoverCell.col * CELL_SIZE
+      const y = hoverCell.row * CELL_SIZE
+      ctx.fillStyle = 'rgba(255, 255, 0, 0.3)'
+      ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE)
     }
 
     // Draw X's and O's
@@ -75,35 +84,64 @@ export function Canvas2DBoard() {
         ctx.stroke()
       }
     })
-  }, [gameState.board])
+  }, [gameState.board, hoverCell])
 
-  const handleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+  const getCellFromEvent = (event: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!canvas) return null
 
     const rect = canvas.getBoundingClientRect()
-    const x = event.clientX - rect.left
-    const y = event.clientY - rect.top
+    // Scale mouse coordinates from display size to canvas size
+    const scaleX = CANVAS_SIZE / rect.width
+    const scaleY = CANVAS_SIZE / rect.height
+    const x = (event.clientX - rect.left) * scaleX
+    const y = (event.clientY - rect.top) * scaleY
 
     const col = Math.floor(x / CELL_SIZE)
     const row = Math.floor(y / CELL_SIZE)
-    const position = row * BOARD_SIZE + col
 
-    placeMove(position)
+    if (col >= 0 && col < BOARD_SIZE && row >= 0 && row < BOARD_SIZE) {
+      return { row, col }
+    }
+    return null
+  }
+
+  const handleClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const cell = getCellFromEvent(event)
+    if (cell) {
+      const position = cell.row * BOARD_SIZE + cell.col
+      placeMove(position)
+    }
+  }
+
+  const handleMouseMove = (event: React.MouseEvent<HTMLCanvasElement>) => {
+    const cell = getCellFromEvent(event)
+    setHoverCell(cell)
+  }
+
+  const handleMouseLeave = () => {
+    setHoverCell(null)
   }
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'center' }}>
+    <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
       <canvas
         ref={canvasRef}
         width={CANVAS_SIZE}
         height={CANVAS_SIZE}
         onClick={handleClick}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         style={{
           border: '2px solid #646cff',
           borderRadius: '8px',
           cursor: 'pointer',
           backgroundColor: '#1a1a1a',
+          width: '100%',
+          maxWidth: 'min(90vw, 600px)',
+          minWidth: '300px',
+          height: 'auto',
+          aspectRatio: '1',
         }}
       />
     </div>

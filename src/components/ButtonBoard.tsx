@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { CellState, BOARD_SIZE } from '../domain/types'
 import { useGame } from './GameProvider'
 
 export function ButtonBoard() {
   const { gameState, placeMove } = useGame()
+  const [hoverCell, setHoverCell] = useState<number | null>(null)
 
   const getCellContent = (cellState: CellState) => {
     if (cellState === CellState.X) return 'X'
@@ -16,13 +18,15 @@ export function ButtonBoard() {
     return '#fff'
   }
 
-  const cellStyle = (cellState: CellState) => ({
+  const cellStyle = (cellState: CellState, index: number) => ({
     width: '100px',
     height: '100px',
     fontSize: '48px',
     fontWeight: 'bold' as const,
     border: '2px solid #444',
-    backgroundColor: '#2a2a2a',
+    backgroundColor: hoverCell === index && cellState === CellState.Empty
+      ? 'rgba(255, 255, 0, 0.3)'
+      : '#2a2a2a',
     color: getCellColor(cellState),
     cursor: cellState === CellState.Empty ? 'pointer' : 'default',
     transition: 'all 0.2s',
@@ -48,7 +52,9 @@ export function ButtonBoard() {
         <button
           key={index}
           onClick={() => placeMove(index)}
-          style={cellStyle(cellState)}
+          onMouseEnter={() => setHoverCell(index)}
+          onMouseLeave={() => setHoverCell(null)}
+          style={cellStyle(cellState, index)}
           disabled={cellState !== CellState.Empty}
         >
           {getCellContent(cellState)}
