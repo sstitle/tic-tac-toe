@@ -1,72 +1,46 @@
 import { useState } from 'react'
 import './App.css'
-import { GameProvider } from './components/GameProvider'
-import { GameStatus } from './components/GameStatus'
-import { GameControls } from './components/GameControls'
-import { ButtonBoard } from './components/ButtonBoard'
-import { Canvas2DBoard } from './components/Canvas2DBoard'
-import { ThreeJSBoard } from './components/ThreeJSBoard'
+import { Home } from './components/Home'
+import { TicTacToeGame } from './components/TicTacToeGame'
+import ThreeScene from './ThreeScene'
 
-type ViewMode = 'buttons' | 'canvas2d' | 'threejs'
+type View = 'home' | '3d-example' | 'tic-tac-toe'
 
 function App() {
-  const [viewMode, setViewMode] = useState<ViewMode>('buttons')
+  const [currentView, setCurrentView] = useState<View>('home')
 
-  const tabStyle = (active: boolean) => ({
+  const backButtonStyle = {
     padding: '10px 20px',
-    margin: '0 5px',
     fontSize: '16px',
-    borderRadius: '8px 8px 0 0',
+    borderRadius: '6px',
     border: '1px solid #444',
-    borderBottom: active ? 'none' : '1px solid #444',
-    backgroundColor: active ? '#2a2a2a' : '#1a1a1a',
+    backgroundColor: '#2a2a2a',
     color: '#fff',
     cursor: 'pointer',
-    fontWeight: active ? ('bold' as const) : ('normal' as const),
-  })
+    transition: 'all 0.2s',
+    marginBottom: '20px',
+  }
 
-  return (
-    <GameProvider>
-      <div style={{ margin: '20px auto', maxWidth: '800px', textAlign: 'center', minHeight: '100vh' }}>
-        <h1 style={{ marginBottom: '30px', color: '#fff' }}>Tic-Tac-Toe</h1>
+  if (currentView === 'home') {
+    return <Home onNavigate={setCurrentView} />
+  }
 
-        <GameStatus />
-        <GameControls />
-
-        <div style={{ marginBottom: '20px' }}>
-          <button
-            onClick={() => setViewMode('buttons')}
-            style={tabStyle(viewMode === 'buttons')}
-          >
-            Button Grid
-          </button>
-          <button
-            onClick={() => setViewMode('canvas2d')}
-            style={tabStyle(viewMode === 'canvas2d')}
-          >
-            2D Canvas
-          </button>
-          <button
-            onClick={() => setViewMode('threejs')}
-            style={tabStyle(viewMode === 'threejs')}
-          >
-            3D WebGL
-          </button>
-        </div>
-
-        <div style={{
-          border: '1px solid #444',
-          borderRadius: '0 8px 8px 8px',
-          padding: '30px',
-          backgroundColor: '#1a1a1a',
-        }}>
-          {viewMode === 'buttons' && <ButtonBoard />}
-          {viewMode === 'canvas2d' && <Canvas2DBoard />}
-          {viewMode === 'threejs' && <ThreeJSBoard />}
-        </div>
+  if (currentView === '3d-example') {
+    return (
+      <div style={{ padding: '20px', margin: '0 auto', maxWidth: '800px' }}>
+        <button onClick={() => setCurrentView('home')} style={backButtonStyle}>
+          ← Back
+        </button>
+        <ThreeScene />
       </div>
-    </GameProvider>
-  )
+    )
+  }
+
+  if (currentView === 'tic-tac-toe') {
+    return <TicTacToeGame onBack={() => setCurrentView('home')} />
+  }
+
+  return null
 }
 
 export default App

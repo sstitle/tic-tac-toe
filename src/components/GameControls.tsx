@@ -17,7 +17,7 @@ export function GameControls() {
   })
 
   return (
-    <div style={{ marginBottom: '20px' }}>
+    <div style={{ marginBottom: '15px' }}>
       <button onClick={undo} disabled={!canUndo} style={buttonStyle(!canUndo)}>
         Undo
       </button>
