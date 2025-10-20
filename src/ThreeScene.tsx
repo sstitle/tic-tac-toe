@@ -35,44 +35,47 @@ export default function ThreeScene() {
     scene.add(light)
     scene.add(new THREE.AmbientLight(0x404040))
 
-    // Z-up camera position (looking down at XY plane from above and angle)
-    camera.position.set(3, 3, 4)
+    // Isometric camera position with Z-up
+    camera.up.set(0, 0, 1) // Set Z as up BEFORE lookAt
+    camera.position.set(3, 3, 3)
     camera.lookAt(0, 0, 0)
-    camera.up.set(0, 0, 1) // Z is up
 
-    // Create XYZ axes (RGB)
+    // Create XYZ axes (RGB) - simple lines from origin
     const createAxes = () => {
       const axesGroup = new THREE.Group()
       const axisLength = 2
-      const axisRadius = 0.02
 
-      // X axis - Red
-      const xGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8)
-      const xMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 })
-      const xAxis = new THREE.Mesh(xGeometry, xMaterial)
-      xAxis.rotation.z = -Math.PI / 2
-      xAxis.position.x = axisLength / 2
+      // X axis - Red (pointing in +X direction)
+      const xGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(axisLength, 0, 0),
+      ])
+      const xMaterial = new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 3 })
+      const xAxis = new THREE.Line(xGeometry, xMaterial)
       axesGroup.add(xAxis)
 
-      // Y axis - Green
-      const yGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8)
-      const yMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 })
-      const yAxis = new THREE.Mesh(yGeometry, yMaterial)
-      yAxis.rotation.x = Math.PI / 2
-      yAxis.position.y = axisLength / 2
+      // Y axis - Green (pointing in +Y direction)
+      const yGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, axisLength, 0),
+      ])
+      const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 })
+      const yAxis = new THREE.Line(yGeometry, yMaterial)
       axesGroup.add(yAxis)
 
-      // Z axis - Blue
-      const zGeometry = new THREE.CylinderGeometry(axisRadius, axisRadius, axisLength, 8)
-      const zMaterial = new THREE.MeshBasicMaterial({ color: 0x0000ff })
-      const zAxis = new THREE.Mesh(zGeometry, zMaterial)
-      zAxis.position.z = axisLength / 2
+      // Z axis - Blue (pointing in +Z direction, which is UP)
+      const zGeometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, axisLength),
+      ])
+      const zMaterial = new THREE.LineBasicMaterial({ color: 0x0000ff, linewidth: 3 })
+      const zAxis = new THREE.Line(zGeometry, zMaterial)
       axesGroup.add(zAxis)
 
       return axesGroup
     }
 
-    // Create 3x3 grid in XY plane
+    // Create 3x3 grid in XY plane (z=0, horizontal floor)
     const createGrid = () => {
       const gridGroup = new THREE.Group()
       const gridSize = 3
@@ -80,7 +83,7 @@ export default function ThreeScene() {
       const step = gridSize / divisions
       const halfSize = gridSize / 2
 
-      const material = new THREE.LineBasicMaterial({ color: 0x444444 })
+      const material = new THREE.LineBasicMaterial({ color: 0x666666 })
 
       // Grid lines parallel to X axis
       for (let i = 0; i <= divisions; i++) {
@@ -213,7 +216,7 @@ export default function ThreeScene() {
 
       // Dispose axes
       axes.children.forEach((child) => {
-        if (child instanceof THREE.Mesh) {
+        if (child instanceof THREE.Line) {
           child.geometry.dispose()
           if (Array.isArray(child.material)) {
             child.material.forEach((m) => m.dispose())
