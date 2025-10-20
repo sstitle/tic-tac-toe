@@ -22,6 +22,7 @@ export interface GameState {
   board: Board
   currentPlayer: Player
   status: GameStatus
+  winningPattern: number[] | null
 }
 
 export const BOARD_SIZE = 3

@@ -1,9 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import * as THREE from 'three'
-import { CellState, BOARD_SIZE } from '../domain/types'
+import { CellState, BOARD_SIZE, GameStatus } from '../domain/types'
 import { useGame } from './GameProvider'
 
-const DEFAULT_SIZE = 400
+// Constants
+const GRID_SIZE = 3
+const HALF_GRID_SIZE = 1.5
+const CAMERA_FOV = 50
+const CAMERA_POSITION = { x: 3, y: 3, z: 3 }
+const PIECE_HEIGHT = 0.15
+const HOVER_OPACITY = 0.3
+const ROTATION_SPEED = 0.005
+const AXIS_LENGTH = 2
 
 export function ThreeJSBoard() {
   const containerRef = useRef<HTMLDivElement>(null)
@@ -14,10 +22,54 @@ export function ThreeJSBoard() {
   const meshesRef = useRef<Map<number, THREE.Group | THREE.Mesh>>(new Map())
   const hoverHighlightRef = useRef<THREE.Mesh | null>(null)
   const axesRef = useRef<THREE.Group | null>(null)
+  const winningLineRef = useRef<THREE.Line | null>(null)
+  const isAnimatingRef = useRef(true)
   const [showAxes, setShowAxes] = useState(false)
   const [sceneReady, setSceneReady] = useState(false)
 
   const { gameState, placeMove } = useGame()
+
+  /**
+   * Calculates the grid cell position from mouse coordinates using raycasting
+   * against the XY plane at z=0.
+   * @returns The row, col, board position, and cell center coordinates, or null if outside grid
+   */
+  const getGridCellFromMouse = (
+    mouseX: number,
+    mouseY: number,
+    camera: THREE.Camera
+  ): { row: number; col: number; position: number; cellX: number; cellY: number } | null => {
+    // Intersect with XY plane at z=0
+    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
+    const raycaster = raycasterRef.current
+    raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera)
+
+    const intersection = new THREE.Vector3()
+    raycaster.ray.intersectPlane(plane, intersection)
+
+    // Check if intersection is within grid bounds
+    if (
+      intersection.x >= -HALF_GRID_SIZE &&
+      intersection.x <= HALF_GRID_SIZE &&
+      intersection.y >= -HALF_GRID_SIZE &&
+      intersection.y <= HALF_GRID_SIZE
+    ) {
+      // Calculate grid cell (0-2 for row and col) - rotated 90 degrees
+      const row = Math.floor(intersection.x + HALF_GRID_SIZE)
+      const col = Math.floor(intersection.y + HALF_GRID_SIZE)
+
+      // Calculate cell center position
+      const cellX = row - HALF_GRID_SIZE + 0.5
+      const cellY = col - HALF_GRID_SIZE + 0.5
+
+      // Convert to board position
+      const position = row * BOARD_SIZE + col
+
+      return { row, col, position, cellX, cellY }
+    }
+
+    return null
+  }
 
   // Initialize Three.js scene
   useEffect(() => {
@@ -31,14 +83,14 @@ export function ThreeJSBoard() {
     sceneRef.current = scene
 
     const camera = new THREE.PerspectiveCamera(
-      50,
+      CAMERA_FOV,
       container.clientWidth / container.clientHeight,
       0.1,
       1000
     )
     // Isometric camera position with Z-up
     camera.up.set(0, 0, 1) // Set Z as up BEFORE lookAt
-    camera.position.set(3, 3, 3)
+    camera.position.set(CAMERA_POSITION.x, CAMERA_POSITION.y, CAMERA_POSITION.z)
     camera.lookAt(0, 0, 0)
     cameraRef.current = camera
 
@@ -58,10 +110,9 @@ export function ThreeJSBoard() {
     // Create 3x3 grid in XY plane (z=0, horizontal floor)
     const createGrid = () => {
       const gridGroup = new THREE.Group()
-      const gridSize = 3
-      const divisions = 3
-      const step = gridSize / divisions
-      const halfSize = gridSize / 2
+      const divisions = GRID_SIZE
+      const step = GRID_SIZE / divisions
+      const halfSize = HALF_GRID_SIZE
 
       const material = new THREE.LineBasicMaterial({ color: 0x646cff })
 
@@ -96,7 +147,7 @@ export function ThreeJSBoard() {
     // Create XYZ axes (RGB) - simple lines from origin
     const createAxes = () => {
       const axesGroup = new THREE.Group()
-      const axisLength = 2
+      const axisLength = AXIS_LENGTH
 
       // X axis - Red (pointing in +X direction)
       const xGeometry = new THREE.BufferGeometry().setFromPoints([
@@ -138,7 +189,7 @@ export function ThreeJSBoard() {
     const hoverMaterial = new THREE.MeshBasicMaterial({
       color: 0xffff00,
       transparent: true,
-      opacity: 0.3,
+      opacity: HOVER_OPACITY,
       side: THREE.DoubleSide,
     })
     const hoverHighlight = new THREE.Mesh(hoverGeometry, hoverMaterial)
@@ -149,16 +200,23 @@ export function ThreeJSBoard() {
     // Animation loop
     let animationFrameId: number
     const animate = () => {
+      if (!isAnimatingRef.current) return
+
       animationFrameId = requestAnimationFrame(animate)
 
       // Rotate all pieces slightly around X and Y axes for better visibility
+      // Only rotate meshes that are still in the scene
       meshesRef.current.forEach((mesh) => {
-        mesh.rotation.x += 0.005
-        mesh.rotation.y += 0.005
+        if (mesh.parent) {
+          mesh.rotation.x += ROTATION_SPEED
+          mesh.rotation.y += ROTATION_SPEED
+        }
       })
 
       renderer.render(scene, camera)
     }
+
+    isAnimatingRef.current = true
     animate()
 
     // Handle mouse move for hover highlighting
@@ -169,34 +227,11 @@ export function ThreeJSBoard() {
       const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1
       const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
-      // Intersect with XY plane at z=0
-      const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
-      const raycaster = raycasterRef.current
-      raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera)
+      const cellInfo = getGridCellFromMouse(mouseX, mouseY, camera)
 
-      const intersection = new THREE.Vector3()
-      raycaster.ray.intersectPlane(plane, intersection)
-
-      // Check if intersection is within grid bounds (-1.5 to 1.5 in both x and y)
-      const gridSize = 3
-      const halfSize = gridSize / 2
-
-      if (
-        intersection.x >= -halfSize &&
-        intersection.x <= halfSize &&
-        intersection.y >= -halfSize &&
-        intersection.y <= halfSize
-      ) {
-        // Calculate grid cell (0-2 for row and col) - rotated 90 degrees
-        const row = Math.floor(intersection.x + halfSize)
-        const col = Math.floor(intersection.y + halfSize)
-
-        // Calculate cell center position
-        const cellX = row - halfSize + 0.5
-        const cellY = col - halfSize + 0.5
-
+      if (cellInfo) {
         // Update hover highlight position
-        hoverHighlight.position.set(cellX, cellY, 0.01)
+        hoverHighlight.position.set(cellInfo.cellX, cellInfo.cellY, 0.01)
         hoverHighlight.visible = true
       } else {
         hoverHighlight.visible = false
@@ -215,6 +250,7 @@ export function ThreeJSBoard() {
 
     // Cleanup
     return () => {
+      isAnimatingRef.current = false
       setSceneReady(false)
       cancelAnimationFrame(animationFrameId)
       renderer.domElement.removeEventListener('mousemove', handleMouseMove)
@@ -312,10 +348,9 @@ export function ThreeJSBoard() {
       const col = index % BOARD_SIZE
 
       // Position in XY plane (grid is -1.5 to 1.5) - rotated 90 degrees
-      const halfSize = 1.5
-      const x = row - halfSize + 0.5
-      const y = col - halfSize + 0.5
-      const z = 0.15 // Lower, closer to the grid
+      const x = row - HALF_GRID_SIZE + 0.5
+      const y = col - HALF_GRID_SIZE + 0.5
+      const z = PIECE_HEIGHT // Lower, closer to the grid
 
       let mesh: THREE.Mesh | THREE.Group
 
@@ -347,8 +382,57 @@ export function ThreeJSBoard() {
     })
   }, [gameState.board, sceneReady])
 
+  // Render winning line when game is won
+  useEffect(() => {
+    const scene = sceneRef.current
+    if (!scene || !sceneReady) return
+
+    // Remove existing winning line if any
+    if (winningLineRef.current) {
+      scene.remove(winningLineRef.current)
+      winningLineRef.current.geometry.dispose()
+      if (Array.isArray(winningLineRef.current.material)) {
+        winningLineRef.current.material.forEach((m) => m.dispose())
+      } else {
+        winningLineRef.current.material.dispose()
+      }
+      winningLineRef.current = null
+    }
+
+    // Add winning line if there's a winning pattern
+    if (gameState.winningPattern) {
+      const points: THREE.Vector3[] = []
+
+      // Convert winning pattern positions to 3D coordinates
+      gameState.winningPattern.forEach((position) => {
+        const row = Math.floor(position / BOARD_SIZE)
+        const col = position % BOARD_SIZE
+        const x = row - HALF_GRID_SIZE + 0.5
+        const y = col - HALF_GRID_SIZE + 0.5
+        const z = 0.3 // Above the pieces
+        points.push(new THREE.Vector3(x, y, z))
+      })
+
+      // Create a thick line using TubeGeometry for better visibility
+      const curve = new THREE.CatmullRomCurve3(points)
+      const tubeGeometry = new THREE.TubeGeometry(curve, 20, 0.05, 8, false)
+      const tubeMaterial = new THREE.MeshBasicMaterial({
+        color: 0x00ff00,
+        transparent: true,
+        opacity: 0.8,
+      })
+      const winningLine = new THREE.Mesh(tubeGeometry, tubeMaterial) as unknown as THREE.Line
+
+      scene.add(winningLine)
+      winningLineRef.current = winningLine
+    }
+  }, [gameState.winningPattern, sceneReady])
+
   // Handle click
   const handleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    // Prevent clicks when game is over
+    if (gameState.status !== GameStatus.Ongoing) return
+
     const container = containerRef.current
     const camera = cameraRef.current
 
@@ -358,31 +442,10 @@ export function ThreeJSBoard() {
     const mouseX = ((event.clientX - rect.left) / rect.width) * 2 - 1
     const mouseY = -((event.clientY - rect.top) / rect.height) * 2 + 1
 
-    // Intersect with XY plane at z=0
-    const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
-    const raycaster = raycasterRef.current
-    raycaster.setFromCamera(new THREE.Vector2(mouseX, mouseY), camera)
+    const cellInfo = getGridCellFromMouse(mouseX, mouseY, camera)
 
-    const intersection = new THREE.Vector3()
-    raycaster.ray.intersectPlane(plane, intersection)
-
-    // Check if intersection is within grid bounds
-    const gridSize = 3
-    const halfSize = gridSize / 2
-
-    if (
-      intersection.x >= -halfSize &&
-      intersection.x <= halfSize &&
-      intersection.y >= -halfSize &&
-      intersection.y <= halfSize
-    ) {
-      // Calculate grid cell (0-2) - rotated 90 degrees
-      const row = Math.floor(intersection.x + halfSize)
-      const col = Math.floor(intersection.y + halfSize)
-
-      // Convert to board position
-      const position = row * BOARD_SIZE + col
-      placeMove(position)
+    if (cellInfo) {
+      placeMove(cellInfo.position)
     }
   }
 

@@ -25,6 +25,7 @@ export function createInitialGameState(): GameState {
     board: createEmptyBoard(),
     currentPlayer: Player.X,
     status: GameStatus.Ongoing,
+    winningPattern: null,
   }
 }
 
@@ -42,7 +43,10 @@ export function togglePlayer(player: Player): Player {
   return player === Player.X ? Player.O : Player.X
 }
 
-export function checkWinner(board: Board): CellState.X | CellState.O | null {
+export function checkWinner(board: Board): {
+  winner: CellState.X | CellState.O | null
+  pattern: number[] | null
+} {
   for (const pattern of WINNING_PATTERNS) {
     const [a, b, c] = pattern
     if (
@@ -50,32 +54,38 @@ export function checkWinner(board: Board): CellState.X | CellState.O | null {
       board[a] === board[b] &&
       board[a] === board[c]
     ) {
-      return board[a] as CellState.X | CellState.O
+      return {
+        winner: board[a] as CellState.X | CellState.O,
+        pattern,
+      }
     }
   }
-  return null
+  return { winner: null, pattern: null }
 }
 
 export function isBoardFull(board: Board): boolean {
   return board.every((cell) => cell !== CellState.Empty)
 }
 
-export function updateGameStatus(board: Board): GameStatus {
-  const winner = checkWinner(board)
+export function updateGameStatus(board: Board): {
+  status: GameStatus
+  winningPattern: number[] | null
+} {
+  const { winner, pattern } = checkWinner(board)
 
   if (winner === CellState.X) {
-    return GameStatus.XWins
+    return { status: GameStatus.XWins, winningPattern: pattern }
   }
 
   if (winner === CellState.O) {
-    return GameStatus.OWins
+    return { status: GameStatus.OWins, winningPattern: pattern }
   }
 
   if (isBoardFull(board)) {
-    return GameStatus.Draw
+    return { status: GameStatus.Draw, winningPattern: null }
   }
 
-  return GameStatus.Ongoing
+  return { status: GameStatus.Ongoing, winningPattern: null }
 }
 
 export function isValidMove(board: Board, position: number): boolean {
@@ -96,8 +106,8 @@ export function placeMove(state: GameState, position: number): GameState | null 
   const newBoard = [...state.board]
   newBoard[position] = playerToCellState(state.currentPlayer)
 
-  // Update game status
-  const newStatus = updateGameStatus(newBoard)
+  // Update game status and get winning pattern
+  const { status: newStatus, winningPattern } = updateGameStatus(newBoard)
 
   // Toggle player only if game is still ongoing
   const newPlayer = newStatus === GameStatus.Ongoing
@@ -108,5 +118,6 @@ export function placeMove(state: GameState, position: number): GameState | null 
     board: newBoard,
     currentPlayer: newPlayer,
     status: newStatus,
+    winningPattern,
   }
 }
